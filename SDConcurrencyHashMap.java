@@ -50,13 +50,41 @@ public class SDConcurrencyHashMap<K, V> {
         SDSlot slot = this.slots[offset];
         V result = (V)slot.getElement(key);
         locks[offset].unlock();
+
+        // adjust load factor
         return result;
     }
 
-    private class SDSlot<K, V>{
-        K key;
-        List<SDHashMapEntry<K, V>> entries = new LinkedList<SDHashMapEntry<K, V>>();
+    private void adjust(){
+        int count = 0;
+        for(int i = 0; i < this.slots.length; i++){
+            count += this.slots[i].entries.size();
+        }
 
+
+        if(count / (double)this.default_slots < this.load_factor){
+            return;
+        }
+
+        int new_slots = count / this.default_slots + 1;
+
+        SDSlot<K, V>[] new_slots_set = new SDSlot[new_slots];
+        for(int i = 0; i < new_slots; i++){
+            new_slots_set[i] = new SDSlot<K, V>();
+        }
+
+        for(int i = 0; i < this.slots.length; i++){
+            Iterator<SDHashMapEntry<K, V>> iter = this.slots[i].iterator();
+            while (iter.hasNext()){
+                SDHashMapEntry<K, V> entry = iter.next();
+                int offset = entry.key.hashCode() % new_slots;
+                new_slots_set[offset].addElement(entry.key, entry.value);
+            }
+        }
+    }
+
+    private class SDSlot<K, V>{
+        public List<SDHashMapEntry<K, V>> entries = new LinkedList<SDHashMapEntry<K, V>>();
 
         public boolean containsKey(K key){
             Iterator<SDHashMapEntry<K, V>> iter = entries.iterator();
@@ -70,6 +98,9 @@ public class SDConcurrencyHashMap<K, V> {
             return false;
         }
 
+        public Iterator<SDHashMapEntry<K, V>> iterator(){
+            return this.entries.iterator();
+        }
 
         public void addElement(K key, V value){
             Iterator<SDHashMapEntry<K, V>> iter = entries.iterator();
