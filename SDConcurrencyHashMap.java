@@ -17,7 +17,6 @@ public class SDConcurrencyHashMap<K, V> {
         this.load_factor = load_factor;
         this.default_slots = s;
 
-
         this.slots = new SDSlot[s];
         this.locks = new Lock[s];
 
@@ -91,7 +90,6 @@ public class SDConcurrencyHashMap<K, V> {
             while (iter.hasNext()){
                 SDHashMapEntry<K, V> entry = iter.next();
                 if(entry.key == key){
-
                     return true;
                 }
             }
