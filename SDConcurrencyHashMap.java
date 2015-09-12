@@ -135,7 +135,6 @@ public class SDConcurrencyHashMap<K, V> {
         public V value;
     }
 
-
     public static void main(String[] args){
         SDConcurrencyHashMap<String, String> map = new SDConcurrencyHashMap<String, String>(16, 0.75);
         map.put("1", "2");
