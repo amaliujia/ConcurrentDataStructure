@@ -5,7 +5,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Created by amaliujia on 15-9-10.
+ * @author amaliujia
+ *
+ * This is a concurrecny hashmap implementation. It uses fine-grained lock,
+ * so performance is better than coarse-grained lock. What's more, load factor
+ * and automatic space extension and rehashing is introduced to reduce the rate
+ * of collision.
  */
 public class SDConcurrencyHashMap<K, V> {
     private double load_factor = 0.75;
@@ -16,6 +21,7 @@ public class SDConcurrencyHashMap<K, V> {
     public SDConcurrencyHashMap(int s, double load_factor){
         this.load_factor = load_factor;
         this.default_slots = s;
+
 
         this.slots = new SDSlot[s];
         this.locks = new Lock[s];
@@ -90,6 +96,7 @@ public class SDConcurrencyHashMap<K, V> {
             while (iter.hasNext()){
                 SDHashMapEntry<K, V> entry = iter.next();
                 if(entry.key == key){
+
                     return true;
                 }
             }
@@ -134,6 +141,7 @@ public class SDConcurrencyHashMap<K, V> {
         public K key;
         public V value;
     }
+
 
     public static void main(String[] args){
         SDConcurrencyHashMap<String, String> map = new SDConcurrencyHashMap<String, String>(16, 0.75);
