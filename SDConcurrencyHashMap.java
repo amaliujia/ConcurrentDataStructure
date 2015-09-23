@@ -61,7 +61,7 @@ public class SDConcurrencyHashMap<K, V> {
     }
 
     private void adjust(){
-        // should get all the locks before execting following operations.
+        // should acquire all the locks before execting following operations.
         int count = 0;
         for(int i = 0; i < this.slots.length; i++){
             count += this.slots[i].entries.size();
