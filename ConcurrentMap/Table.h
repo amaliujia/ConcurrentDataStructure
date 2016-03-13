@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-constexpr int capacity = 50;
+constexpr int capacity = 100;
 
 template <typename Key, typename Value>
 
@@ -56,8 +56,9 @@ public:
       size_t hash_code = hasher_(k);
 
       for (size_t i = hash_code % capacity; ; i++) {
-          i &= capacity - 1;
-
+          if (i == capacity) {
+            i = 0;
+          }
           Key cur_key = this->cells[i].key;
 
           if (keyEqualChecker_(cur_key, k)) {
@@ -111,10 +112,11 @@ public:
 
     Value Get(Key k) {
       size_t hash_code = hasher_(k);
-
-      for (size_t i = hash_code % capacity; ; i++) {
-        i &= capacity - 1;
-
+      size_t count = 0;
+      for (size_t i = hash_code % capacity; count < capacity ; i++, count++) {
+        if (i == capacity) {
+          i = 0;
+        }
         Key cur_key = this->cells[i].key;
 
         if (keyEqualChecker_(cur_key, k)) {
@@ -127,8 +129,16 @@ public:
           }
         }
       }
+      return default_value_;
     }
 
+    void Print() {
+      for (size_t i = 0; i < capacity; i++) {
+        if (this->cells[i].key != default_key_) {
+          std::cout << this->cells[i].key << " " << this->cells[i].value << std::endl;
+        }
+      }
+    }
 
 private:
     Key default_key_;
@@ -161,6 +171,11 @@ public:
 
     Value Get(Key k) {
       return this->table_->Get(k);
+    }
+
+
+    void Print() {
+      this->table_->Print();
     }
 private:
     Table<Key, Value, KeyHasher, KeyEqualChecker, ValueEqualChecker> *table_;
