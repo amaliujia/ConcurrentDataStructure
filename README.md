@@ -1,14 +1,17 @@
 # ConcurrentDataStructure
 Focus on lock-free, concurrent, parallel data structures.
 
+Working on:
+
+Latch-free Hashmap.
+
+
 TODO:
 
-1. Bwtree.
+1. Bwtree (Latch free B+ tree).
 
 2. Latch-free Inverted List.
 
-3. Latch-free Hashmap.
+3. Concurrent B+ Tree.
 
-4. Concurrent B+ Tree.
-
-5. Concurrent Skip List.
+4. Concurrent Skip List.
