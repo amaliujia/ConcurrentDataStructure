@@ -65,7 +65,7 @@ public:
             Value cur_val = this->cells[i].value;
             while (true) {
               if (valueEqualChecker_(cur_val, default_value_) && IfMigrating == true) {
-                // go to another table
+                // TODO:go to another table
                 return true;
               }
 

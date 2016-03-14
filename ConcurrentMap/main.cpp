@@ -35,7 +35,7 @@ void Insert(TableManager<int, int, IntHasher, IntEqualChecker, IntEqualChecker> 
 
 void ThreadedOverlappingTest(TableManager<int, int, IntHasher, IntEqualChecker, IntEqualChecker> *mgr) {
   int a = 1, b = 2, c = 3;
-  int count = 3;
+  int count = 10;
   int id1 = 1, id2 = 2, id3 = 3;
   std::thread thread_one(Insert, mgr, a, count, id1);
   std::thread thread_two(Insert, mgr, b, count, id2);
