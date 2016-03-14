@@ -64,12 +64,12 @@ void ThreadedTest(TableManager<int, int, IntHasher, IntEqualChecker, IntEqualChe
 int main() {
   IntHasher hasher;
   IntEqualChecker equalChecker;
-  TableManager<int, int, IntHasher, IntEqualChecker, IntEqualChecker> table(hasher, equalChecker, equalChecker, 0, 0);
+  TableManager<int, int, IntHasher, IntEqualChecker, IntEqualChecker> table(hasher, equalChecker, equalChecker, 0, 100);
 
 
 //  NormalTest(&table);
 //  ThreadedTest(&table);
-  ThreadedOverlappingTest(&table);
+//  ThreadedOverlappingTest(&table);
 
   return 0;
 }

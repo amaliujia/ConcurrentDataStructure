@@ -5,15 +5,13 @@
 #ifndef CONCURRENTMAP_TABLE_H
 #define CONCURRENTMAP_TABLE_H
 
-
+#include <vector>
 #include <atomic>
 #include <stdlib.h>
+#include <assert.h>
 #include <iostream>
 
-constexpr int capacity = 100;
-
 template <typename Key, typename Value>
-
 struct Cell{
   Key key;
   Value value;
@@ -22,126 +20,99 @@ struct Cell{
 template <typename Key, typename Value, class KeyHasher, class KeyEqualChecker, class ValueEqualChecker>
 class Table {
 public:
-    Table(): used_(0) {
+
+
+    Table(KeyHasher hasher, KeyEqualChecker checker, ValueEqualChecker vchecker, Value v, int capacity):
+      default_value_(v), keyEqualChecker_(checker), valueEqualChecker_(vchecker), hasher_(hasher), capacity_(capacity) {
+      Init();
     }
 
-    Table(KeyHasher hasher): used_(0), hasher_(hasher) {}
+    ~Table() {
 
-    Table(KeyHasher hasher, KeyEqualChecker checker):
-      hasher_(hasher), keyEqualChecker_(checker) {
-      Table();
     }
-
-    Table(KeyHasher hasher, KeyEqualChecker checker, Key k):
-      default_key_(k) {
-      Table(hasher, checker);
-    }
-
-    Table(KeyHasher hasher, KeyEqualChecker checker, ValueEqualChecker vchecker, Key k, Value v):
-      default_value_(v), IfMigrating(false), valueEqualChecker_(vchecker) {
-      Table(hasher, checker, k);
-      init();
-    }
-
 private:
-    void init() {
-      for (size_t i = 0; i < capacity; i++) {
-        this->cells[i].key = default_key_;
-        this->cells[i].value = default_value_;
+    void Init() {
+      cells.resize(capacity_);
+
+      for (size_t i = 0; i < capacity_; i++) {
+        this->cells[i] = nullptr;
       }
+
+      next_table_ = nullptr;
+    }
+
+    bool SearchSet(Cell<Key, Value> *cell_ptr, Key k, Value v) {
+
+    }
+
+    inline Cell<Key, Value> * CreateCell(Key k, Value v) {
+      Cell<Key, Value> *ret_ptr = new Cell<Key, Value>();
+      ret_ptr->key = k;
+      ret_ptr->value = v;
+      return ret_ptr;
+    };
+
+    bool IncrementUsed() {
+      int cur_used = used_;
+      return __sync_bool_compare_and_swap(&used_, cur_used, cur_used + 1);
+    }
+
+    bool DecrementUsed() {
+      int cur_used = used_;
+      return __sync_bool_compare_and_swap(&used_, cur_used, cur_used - 1);
     }
 
 public:
     bool Set(Key k, Value v){
+      assert(!valueEqualChecker_(v, default_value_));
+
       size_t hash_code = hasher_(k);
 
-      for (size_t i = hash_code % capacity; ; i++) {
-          if (i == capacity) {
-            i = 0;
-          }
-          Key cur_key = this->cells[i].key;
+      while(true) {
+        Cell<Key, Value> *cell_ptr = this->cells[hash_code % capacity_];
+        // search and set
+        if (SearchSet(cell_ptr, k, v)) {
+          return true;
+        }
 
-          if (keyEqualChecker_(cur_key, k)) {
-            Value cur_val = this->cells[i].value;
-            while (true) {
-              if (valueEqualChecker_(cur_val, default_value_) && IfMigrating == true) {
-                // TODO:go to another table
-                return true;
-              }
+        // Key not exist
+        // 1. check used_
+        // 2. if overflow, start migration
+        // 3. if not overflow, update used_.
+        // 4. If fail update used_, check overflow. If overflow, start migration
+        // 5. If succeed, do insert.
+        if (used_ > capacity_ * load_factor_ || used_ >= capacity_) {
+          return false;
+        } else {
+          auto new_cell_ptr = CreateCell(k, v);
+          if (__sync_bool_compare_and_swap(&this->cells[hash_code % capacity_]), cell_ptr, new_cell_ptr) {
+            // update used_
+            IncrementUsed();
+            // check used_
 
-              // value is only default value.
-              if(__sync_bool_compare_and_swap(&(this->cells[i].value), cur_val, v)) {
-                return true;
-              }
-
-              cur_val = this->cells[i].value;
-            }
-            return true;
-          }
-
-          if (keyEqualChecker_(cur_key, default_key_)) {
-            size_t cur_used = used_;
-
-            if (cur_used >= (int(capacity * 0.75))) {
-              // start migration
-              return false;
-            }
-
-            while (!__sync_bool_compare_and_swap(&used_, cur_used, cur_used + 1)) {
-              cur_used++;
-              if (cur_used >= int(capacity * 0.075)) {
-                // start migration
-                return false;
-              }
-            }
-
-            // If successfully get one slot:
-
-            if (__sync_bool_compare_and_swap(&(this->cells[i].key), default_key_, k)) {
-              Value cur_val = this->cells[i].value;
-
-              while (!__sync_bool_compare_and_swap(&(this->cells[i].value), cur_val, v)) {
-                cur_val = this->cells[i].value;
-              }
-              return true;
-            }
+          } else {
 
           }
+        }
       }
+
+      return false;
     }
 
     Value Get(Key k) {
       size_t hash_code = hasher_(k);
-      size_t count = 0;
-      for (size_t i = hash_code % capacity; count < capacity ; i++, count++) {
-        if (i == capacity) {
-          i = 0;
-        }
-        Key cur_key = this->cells[i].key;
 
-        if (keyEqualChecker_(cur_key, k)) {
-          Value ret_val = this->cells[i].value;
 
-          if (ret_val != default_value_) {
-            return ret_val;
-          } else {
-            return default_value_;
-          }
-        }
-      }
       return default_value_;
     }
 
     void Print() {
-      for (size_t i = 0; i < capacity; i++) {
-        if (this->cells[i].key != default_key_) {
-          std::cout << this->cells[i].key << " " << this->cells[i].value << std::endl;
-        }
-      }
+
     }
 
 private:
-    Key default_key_;
+    const int capacity_;
+    const float load_factor_ = 0.75;
     Value default_value_;
 
     KeyHasher hasher_;
@@ -149,17 +120,20 @@ private:
     ValueEqualChecker valueEqualChecker_;
 
     size_t used_;
-    Cell<Key , Value> cells[capacity];
+    std::vector<Cell<Key , Value> *> cells;
 
-    std::atomic_bool IfMigrating;
-
+    Table<Key, Value, KeyHasher, KeyEqualChecker, ValueEqualChecker> *next_table_;
 };
 
 template <typename Key, typename Value, class KeyHasher, class KeyEqualChecker, class ValueEqualChecker>
 class TableManager {
 public:
-    TableManager(KeyHasher hasher, KeyEqualChecker checker, ValueEqualChecker vchecker, Key default_key, Value default_value) {
-      this->table_ = new Table<Key, Value, KeyHasher, KeyEqualChecker, ValueEqualChecker>(hasher, checker, vchecker, default_key, default_value);
+    TableManager(KeyHasher hasher, KeyEqualChecker checker, ValueEqualChecker vchecker, Value default_value, int capacity) {
+      this->table_ = new Table<Key, Value, KeyHasher, KeyEqualChecker, ValueEqualChecker>(hasher, checker, vchecker, default_value, capacity);
+    }
+
+    ~TableManager() {
+      delete table_;
     }
 
     void Set(Key k, Value v) {
@@ -177,6 +151,13 @@ public:
     void Print() {
       this->table_->Print();
     }
+
+private:
+    // Two things need to mention
+    // 1. Multiversion controll (one key, more than one version. Must retry for the non-first players)
+    // 2. Make sure Migration finish. (Compare counts of Migration flag to used_)
+    void Migrate();
+
 private:
     Table<Key, Value, KeyHasher, KeyEqualChecker, ValueEqualChecker> *table_;
 };
