@@ -80,19 +80,11 @@ public:
         // 2. if overflow, start migration
         // 3. if not overflow, update used_.
         // 4. If fail update used_, check overflow. If overflow, start migration
-        // 5. If succeed, do insert.
+        // 5. If succeed, do insert util succeed. Then return.
         if (used_ > capacity_ * load_factor_ || used_ >= capacity_) {
           return false;
         } else {
           auto new_cell_ptr = CreateCell(k, v);
-          if (__sync_bool_compare_and_swap(&this->cells[hash_code % capacity_]), cell_ptr, new_cell_ptr) {
-            // update used_
-            IncrementUsed();
-            // check used_
-
-          } else {
-
-          }
         }
       }
 
