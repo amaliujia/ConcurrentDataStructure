@@ -6,3 +6,7 @@
 ConcurrentMap/.idea/.name
 
 ConcurrentMap/CMakeLists.txt
+
+build/*
+
+lib/*
